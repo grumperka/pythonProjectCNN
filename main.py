@@ -1,19 +1,30 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+
 mnist = tf.keras.datasets.mnist
 
+#pobieranie danych
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+#formatowanie rozmiaru obrazów do rozmiaru 28x28x1
 x_train = x_train.reshape((x_train.shape[0], x_train.shape[1], x_train.shape[2], 1))
 x_test = x_test.reshape((x_test.shape[0], x_test.shape[1], x_test.shape[2], 1))
-x_train, x_test = x_train.astype('float32'),  x_test.astype('float32')
+
+#normalizowanie pixeli do postaci 0 - 1
+x_train, x_test = x_train.astype('float32') / 255.0,  x_test.astype('float32') / 255.0
+
 print(f'Zbiór uczący: {x_train.shape}, zbiór walidacyjny: {x_test.shape}')
+#zbiór uczący 60 000
+#zbiór walidacyjny 10 000
 
 img_shape = x_train.shape[1:]
-print(img_shape)
+print(f'Wymiary obrazu: {img_shape}')
 
+#labele do obrazków
 class_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
+#funkcja do wyświetlenia 40 obrazów ze zbioru treningowego
 plt.figure(figsize=(14, 10))
 for i in range(40):
     plt.subplot(5, 8, i + 1)
@@ -24,7 +35,6 @@ for i in range(40):
     plt.xlabel(class_names[y_train[i]])
 plt.show()
 
-
 model = tf.keras.models.Sequential([
   tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
   tf.keras.layers.MaxPool2D(pool_size=(2, 2)),
@@ -33,25 +43,26 @@ model = tf.keras.models.Sequential([
   tf.keras.layers.Conv2D(64, kernel_size=(3, 3), activation='relu'),
   tf.keras.layers.Conv2D(64, kernel_size=(3, 3), activation='relu'),
   tf.keras.layers.MaxPool2D(pool_size=(2, 2)),
-  tf.keras.layers.Dropout(0.5),
+  tf.keras.layers.Dropout(0.5), #zapobiega uczeniu się na pamięć
 
-  tf.keras.layers.Flatten(input_shape=(4, 4, 64)),
-  tf.keras.layers.Dense(64, activation='relu'),
-  tf.keras.layers.Dense(10, activation='softmax')
+  tf.keras.layers.Flatten(input_shape=(4, 4, 64)), #spłaszcza tensor do 1D
+  tf.keras.layers.Dense(64, activation='relu'), #max(0,x)
+  tf.keras.layers.Dense(10, activation='softmax') #sprawdza, czy prawdopodobieństwa sumują się do 1
   #tf.keras.layers.Dropout(0.25)
 ])
 
 model.summary()
 
-predictions = model(x_train[:1]).numpy()
-tf.nn.softmax(predictions).numpy()
-loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+print('################################')
+
+predictions = model(x_train[:1]).numpy() #Dla każdego przykładu model zwraca 1 wektor wyników „ logits ” lub „ log-odds ”
+tf.nn.softmax(predictions).numpy() #konwersja logitów na prawdopowobieńswo
+loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True) #zwraca stratę skalarną dla każdego przykłady
 loss_fn(y_train[:1], predictions).numpy()
 
 model.compile(optimizer='adam',
               loss=loss_fn,
               metrics=['accuracy'])
-
 
 history = model.fit(x_train, y_train, epochs=20, verbose=1, batch_size=256, validation_split=0.2)
 
@@ -82,10 +93,14 @@ def draw_curves(history, key1='accuracy', ylim1=(0.8, 1.00),
 draw_curves(history, key1='accuracy', ylim1=(0.7, 1),
             key2='loss', ylim2=(0.0, 0.8))
 
+print('################################')
+
+model.evaluate(x_test,  y_test, verbose=2) #sprawdzanie wydajności modelu na danych walidacyjnych
+print('################################')
 probability_model = tf.keras.Sequential([
   model,
-  tf.keras.layers.Softmax()
+  tf.keras.layers.Softmax() #dodawanie warstwy Softmax do zwrócenia prawdopodobieństw
 ])
 
-probability_model(x_test[:5])
+print(probability_model(x_test[:5]))
 
