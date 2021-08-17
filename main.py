@@ -1,8 +1,17 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
-
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 mnist = tf.keras.datasets.mnist
+
+datagen = ImageDataGenerator(
+    rotation_range=10,
+    zoom_range=0.1,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    horizontal_flip=False,
+    vertical_flip=False
+) #manipulowanie obrazem, obrót, powiększenie, zmniejszenie
 
 #pobieranie danych
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -37,8 +46,8 @@ plt.show()
 
 model = tf.keras.models.Sequential([
   tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
-  tf.keras.layers.MaxPool2D(pool_size=(2, 2)),
-  #tf.keras.layers.Dropout(0.25),
+  tf.keras.layers.MaxPool2D(pool_size=(2, 2)), #zmniejsza rozdzielczość map cech
+  tf.keras.layers.Dropout(0.25),
 
   tf.keras.layers.Conv2D(64, kernel_size=(3, 3), activation='relu'),
   tf.keras.layers.Conv2D(64, kernel_size=(3, 3), activation='relu'),
@@ -48,7 +57,6 @@ model = tf.keras.models.Sequential([
   tf.keras.layers.Flatten(input_shape=(4, 4, 64)), #spłaszcza tensor do 1D
   tf.keras.layers.Dense(64, activation='relu'), #max(0,x)
   tf.keras.layers.Dense(10, activation='softmax') #sprawdza, czy prawdopodobieństwa sumują się do 1
-  #tf.keras.layers.Dropout(0.25)
 ])
 
 model.summary()
@@ -64,8 +72,7 @@ model.compile(optimizer='adam',
               loss=loss_fn,
               metrics=['accuracy'])
 
-history = model.fit(x_train, y_train, epochs=20, verbose=1, batch_size=256, validation_split=0.2)
-
+history = model.fit(datagen.flow(x_train, y_train, batch_size=64), validation_data=(x_test, y_test), epochs=20, verbose=1)
 
 def draw_curves(history, key1='accuracy', ylim1=(0.8, 1.00),
                 key2='loss', ylim2=(0.0, 1.0)):
@@ -97,10 +104,11 @@ print('################################')
 
 model.evaluate(x_test,  y_test, verbose=2) #sprawdzanie wydajności modelu na danych walidacyjnych
 print('################################')
+
 probability_model = tf.keras.Sequential([
   model,
   tf.keras.layers.Softmax() #dodawanie warstwy Softmax do zwrócenia prawdopodobieństw
 ])
 
-print(probability_model(x_test[:5]))
+probability_model(x_test[:5])
 
